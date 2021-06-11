@@ -21,7 +21,7 @@ class AccountJournal(models.Model):
             ('FCAP', 'Factura cambiaria pequeño contribuyente'),
             ('FESP', 'Factura especial'),
             ('NABN','Nota de abono'),
-            ('RDON','Recibo de donación'),
+            ('RDON','Recibo de doanción'),
             ('RECI','Recibo'),
             ('NDEB','Nota de Débito'),
             ('NCRE','Nota de Crédito'),
@@ -38,5 +38,3 @@ class AccountJournal(models.Model):
     feel_llave_pre_firma = fields.Char('Llave pre firma feel')
     feel_llave_firma = fields.Char('Llave firma feel')
     feel_nombre_comercial = fields.Char('Nombre comercial')
-    producto_descripcion = fields.Boolean('Producto + descripcion')
-    descripcion_factura = fields.Boolean('Descripcion factura')

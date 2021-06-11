@@ -21,5 +21,5 @@ class ResCompany(models.Model):
     usuario_digifact = fields.Char('Usuario digifact')
     pass_digifact = fields.Char('Contraseña digifact')
     fel_prueba = fields.Boolean('Fel prueba')
-    feel_codigo_exportador = fields.Char('Codigo exportador')
+
     # feel_codigo_establecimiento = fields.Char('Codigo de establecimiento')
