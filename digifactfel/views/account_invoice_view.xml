@@ -11,11 +11,13 @@
                     <page name="feel" string="FEEL">
                         <group>
                             <group>
+                                <field name="feel_incoterm"/>
                                 <field name="acuse_recibo_sat"/>
                                 <field name="codigo_sat"/>
                                 <field name="feel_numero_autorizacion"/>
                                 <field name="feel_serie"/>
                                 <field name="feel_numero"/>
+
                                 <!-- <field name="feel_uuid"/>
                                 <field name="feel_documento_certificado" widget ="url"/> -->
                             </group>

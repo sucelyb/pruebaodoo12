@@ -17,10 +17,10 @@ from lxml.builder import ElementMaker
 import xml.etree.ElementTree as ET
 import datetime
 
-class AccountMove(models.Model):
+class AccountInvoice(models.Model):
     _inherit = "account.invoice"
 
-    feel_numero_autorizacion = fields.Char('Feel Numero de autorizacion')
+    feel_numero_autorizacion = fields.Char('Feel NUero de autorizacion')
     feel_serie = fields.Char('Feel serie')
     feel_numero = fields.Char('Feel numero')
     feel_uuid = fields.Char('UUID')
@@ -40,13 +40,6 @@ class AccountMove(models.Model):
             ('ZZZ','Otros')
         ],string="Incoterm",default="EXW",
         help="Termino de entrega")
-    acuse_recibo_sat = fields.Char('Acuse Recibo SAT')
-    codigo_sat = fields.Char('Codigo SAT')
-    formato_xml = fields.Binary('XML Anulado')
-    formato_html = fields.Binary('HTML')
-    formato_pdf = fields.Binary('PDF')
-    response_data1 = fields.Binary('Reponse DATA1')
-    back_procesor = fields.Char('BACK PROCESOR')
 
 # 4 1 , exportacion
     def fecha_hora_factura(self, fecha):
@@ -55,12 +48,11 @@ class AccountMove(models.Model):
         fecha_hora_emision = str(fecha_convertida)+'T'+str(hora)
         return fecha_hora_emision
 
-    def _post(self,soft=True):
+    def invoice_validate(self):
         for factura in self:
-            logging.warn(factura)
-            if factura.journal_id and factura.journal_id.feel_tipo_dte and factura.journal_id.feel_codigo_establecimiento:
+            if factura.journal_id.feel_llave_firma:
                 logging.warn(factura)
-                # Definimos SHEMALOCATION
+                # Definimos SHEMALOCATION - XML
                 lista_impuestos = []
 
                 attr_qname = etree.QName("http://www.w3.org/2001/XMLSchema-instance", "schemaLocation")
@@ -73,16 +65,16 @@ class AccountMove(models.Model):
                 }
                 moneda = str(factura.currency_id.name)
                 logging.warn(moneda)
-                fecha = datetime.datetime.strptime(str(factura.invoice_date), '%Y-%m-%d').date().strftime('%Y-%m-%d')
+                fecha = datetime.datetime.strptime(str(factura.date_invoice), '%Y-%m-%d').date().strftime('%Y-%m-%d')
                 hora = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%H:%M:%S")
-                fecha_hora_emision = self.fecha_hora_factura(factura.invoice_date)
+                fecha_hora_emision = self.fecha_hora_factura(factura.date_invoice)
                 tipo = factura.journal_id.feel_tipo_dte
                 # if tipo == 'FACT':
                 #
                 # if tipo == 'NDEB':
                 #
                 if tipo == 'NCRE':
-                    factura_original_id = self.env['account.move'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
+                    factura_original_id = self.env['account.invoice'].search([('number','=',factura.origin)])
                     if factura_original_id and factura.currency_id.id == factura_original_id.currency_id.id:
                         tipo == 'NCRE'
                         logging.warn('si es nota credito')
@@ -95,7 +87,7 @@ class AccountMove(models.Model):
                     "NumeroAcceso": str(100000000),
                     "Tipo":tipo
                     }
-                if tipo == 'FACT' and factura.tipo_factura == 'exportacion':
+                if tipo == 'FACT' and factura.currency_id !=  self.env.user.company_id.currency_id:
                     datos_generales['Exp'] = "SI"
 
 
@@ -108,12 +100,12 @@ class AccountMove(models.Model):
 
                 datos_emisor = {
                     "AfiliacionIVA":"GEN",
-                    "CodigoEstablecimiento": str(factura.journal_id.feel_codigo_establecimiento),
+                    "CodigoEstablecimiento": str(factura.journal_id.feel_codigo_establecimiento) or "",
                     "CorreoEmisor": str(factura.company_id.email) or "",
                     "NITEmisor": str(nit_company),
                     # "NITEmisor": '103480307',
-                    "NombreComercial": factura.journal_id.feel_nombre_comercial,
-                    "NombreEmisor": factura.company_id.name
+                    "NombreComercial": factura.journal_id.feel_nombre_comercial or "",
+                    "NombreEmisor": factura.company_id.name or ""
                 }
 
                 nit_partner = "CF"
@@ -164,13 +156,12 @@ class AccountMove(models.Model):
                 TagReceptorDepartamento = etree.SubElement(TagDireccionReceptor,DTE_NS+"Departamento",{})
                 TagReceptorDepartamento.text = factura.partner_id.state_id.name or 'Guatemala'
                 TagReceptorPais = etree.SubElement(TagDireccionReceptor,DTE_NS+"Pais",{})
-                TagReceptorPais.text = factura.partner_id.country_id.code or "GT"
+                TagReceptorPais.text = "GT"
                 # Frases
 
                 data_frase = {
                     "xmlns:dte": "http://www.sat.gob.gt/dte/fel/0.2.0"
                 }
-
 
                 NSMAPFRASE = {
                     "dte": "http://www.sat.gob.gt/dte/fel/0.2.0"
@@ -207,7 +198,7 @@ class AccountMove(models.Model):
                 # monto_gravable_iva = 0
                 # monto_impuesto_iva = 0
                 for linea in factura.invoice_line_ids:
-                    tax_ids = linea.tax_ids
+                    tax_ids = linea.invoice_line_tax_ids
                     numero_linea = 1
                     bien_servicio = "S" if linea.product_id.type == 'service' else "B"
                     linea_datos = {
@@ -220,10 +211,6 @@ class AccountMove(models.Model):
                     cantidad = linea.quantity
                     unidad_medida = "UNI"
                     descripcion = linea.product_id.name
-                    if factura.journal_id.descripcion_factura:
-                        descripcion = linea.name
-                    if factura.journal_id.producto_descripcion:
-                        descripcion = str(linea.product_id.name) + ' ' +str(linea.name)
                     # precio_unitario = (linea.price_unit * (1 - (linea.discount) / 100.0)) if linea.discount > 0 else linea.price_unit
                     precio_unitario = linea.price_unit
                     precio = linea.price_unit * linea.quantity
@@ -243,66 +230,47 @@ class AccountMove(models.Model):
                     TagDescuento.text =  str('{:.6f}'.format(descuento))
 
 
-
+                    # impuestos
+                    TagImpuestos = etree.SubElement(TagItem,DTE_NS+"Impuestos",{})
 
                     logging.warn('IMPUESTOS')
-                    currency = linea.move_id.currency_id
+                    currency = linea.invoice_id.currency_id
                     logging.warn(precio_unitario)
-                    taxes = tax_ids.compute_all(precio_unitario-descuento, currency, linea.quantity, linea.product_id, linea.move_id.partner_id)
+                    taxes = tax_ids.compute_all(precio_unitario-descuento, currency, linea.quantity, linea.product_id, linea.invoice_id.partner_id)
 
-                    if len(linea.tax_ids) > 0:
-                        # impuestos
-                        TagImpuestos = etree.SubElement(TagItem,DTE_NS+"Impuestos",{})
-                        for impuesto in taxes['taxes']:
-                            logging.warning('PASAS AQIO')
-                            nombre_impuesto = impuesto['name']
-                            valor_impuesto = impuesto['amount']
-                            if impuesto['name'] == 'IVA por Pagar':
-                                nombre_impuesto = "IVA"
-                                tax_iva = True
+                    for impuesto in taxes['taxes']:
+                        nombre_impuesto = impuesto['name']
+                        valor_impuesto = impuesto['amount']
+                        if impuesto['name'] == 'IVA por Pagar':
+                            nombre_impuesto = "IVA"
+                            tax_iva = True
 
-                            TagImpuesto = etree.SubElement(TagImpuestos,DTE_NS+"Impuesto",{})
-                            TagNombreCorto = etree.SubElement(TagImpuesto,DTE_NS+"NombreCorto",{})
-                            TagNombreCorto.text = nombre_impuesto
-                            TagCodigoUnidadGravable = etree.SubElement(TagImpuesto,DTE_NS+"CodigoUnidadGravable",{})
-                            TagCodigoUnidadGravable.text = "1"
-                            TagMontoGravable = etree.SubElement(TagImpuesto,DTE_NS+"MontoGravable",{})
-                            TagMontoGravable.text = str(precio_subtotal)
-                            TagMontoImpuesto = etree.SubElement(TagImpuesto,DTE_NS+"MontoImpuesto",{})
-                            TagMontoImpuesto.text = '{:.6f}'.format(valor_impuesto)
-                            # monto_gravable_iva += precio_subtotal
-                            # monto_impuesto_iva += valor_impuesto
+                        TagImpuesto = etree.SubElement(TagImpuestos,DTE_NS+"Impuesto",{})
+                        TagNombreCorto = etree.SubElement(TagImpuesto,DTE_NS+"NombreCorto",{})
+                        TagNombreCorto.text = nombre_impuesto
+                        TagCodigoUnidadGravable = etree.SubElement(TagImpuesto,DTE_NS+"CodigoUnidadGravable",{})
+                        TagCodigoUnidadGravable.text = "1"
+                        TagMontoGravable = etree.SubElement(TagImpuesto,DTE_NS+"MontoGravable",{})
+                        TagMontoGravable.text = str(precio_subtotal)
+                        TagMontoImpuesto = etree.SubElement(TagImpuesto,DTE_NS+"MontoImpuesto",{})
+                        TagMontoImpuesto.text = '{:.6f}'.format(valor_impuesto)
+                        # monto_gravable_iva += precio_subtotal
+                        # monto_impuesto_iva += valor_impuesto
 
 
-                            lista_impuestos.append({'nombre': nombre_impuesto, 'monto': valor_impuesto})
+                        lista_impuestos.append({'nombre': nombre_impuesto, 'monto': valor_impuesto})
 
-                    # comentado por el momento
-                    else:
-                        TagImpuestos = etree.SubElement(TagItem,DTE_NS+"Impuestos",{})
+                    if tipo == 'FACT' and factura.currency_id !=  self.env.user.company_id.currency_id:
+
                         TagImpuesto = etree.SubElement(TagImpuestos,DTE_NS+"Impuesto",{})
                         TagNombreCorto = etree.SubElement(TagImpuesto,DTE_NS+"NombreCorto",{})
                         TagNombreCorto.text = "IVA"
                         TagCodigoUnidadGravable = etree.SubElement(TagImpuesto,DTE_NS+"CodigoUnidadGravable",{})
-                        TagCodigoUnidadGravable.text = "1"
-                        if factura.amount_tax == 0:
-                            TagCodigoUnidadGravable.text = "2"
+                        TagCodigoUnidadGravable.text = "2"
                         TagMontoGravable = etree.SubElement(TagImpuesto,DTE_NS+"MontoGravable",{})
                         TagMontoGravable.text = str(precio_subtotal)
                         TagMontoImpuesto = etree.SubElement(TagImpuesto,DTE_NS+"MontoImpuesto",{})
                         TagMontoImpuesto.text = "0.00"
-                    # if (tipo in ['FACT','NCRE']) and factura.currency_id !=  self.env.user.company_id.currency_id:
-                    #
-                    #     TagImpuesto = etree.SubElement(TagImpuestos,DTE_NS+"Impuesto",{})
-                    #     TagNombreCorto = etree.SubElement(TagImpuesto,DTE_NS+"NombreCorto",{})
-                    #     TagNombreCorto.text = "IVA"
-                    #     TagCodigoUnidadGravable = etree.SubElement(TagImpuesto,DTE_NS+"CodigoUnidadGravable",{})
-                    #     TagCodigoUnidadGravable.text = "1"
-                    #     if factura.amount_tax == 0:
-                    #         TagCodigoUnidadGravable.text = "2"
-                    #     TagMontoGravable = etree.SubElement(TagImpuesto,DTE_NS+"MontoGravable",{})
-                    #     TagMontoGravable.text = str(precio_subtotal)
-                    #     TagMontoImpuesto = etree.SubElement(TagImpuesto,DTE_NS+"MontoImpuesto",{})
-                    #     TagMontoImpuesto.text = "0.00"
 
 
                     logging.warn(taxes)
@@ -330,16 +298,10 @@ class AccountMove(models.Model):
                     dato_impuesto = {'NombreCorto': lista_impuestos[0]['nombre'],'TotalMontoImpuesto': str('{:.2f}'.format(total_impuesto))}
                     TagTotalImpuesto = etree.SubElement(TagTotalImpuestos,DTE_NS+"TotalImpuesto",dato_impuesto)
                     TagTotalImpuestos.append(TagTotalImpuesto)
-                # else:
-                #     logging.warn('ENTRA AL ELSE')
-                #     dato_impuesto = {'NombreCorto': 'IVA','TotalMontoImpuesto': str('{:.2f}'.format(0.00))}
-                #     TagTotalImpuesto = etree.SubElement(TagTotalImpuestos,DTE_NS+"TotalImpuesto",dato_impuesto)
-                #     TagTotalImpuestos.append(TagTotalImpuesto)
                 TagGranTotal = etree.SubElement(TagTotales,DTE_NS+"GranTotal",{})
                 TagGranTotal.text = str(factura.amount_total)
 
-                if tipo == 'FACT' and (factura.currency_id !=  self.env.user.company_id.currency_id and factura.tipo_factura == 'exportacion'):
-                    logging.warning('es exportacion')
+                if tipo == 'FACT' and factura.currency_id !=  self.env.user.company_id.currency_id:
                     dato_impuesto = {'NombreCorto': "IVA",'TotalMontoImpuesto': str(0.00)}
                     TagTotalImpuesto = etree.SubElement(TagTotalImpuestos,DTE_NS+"TotalImpuesto",dato_impuesto)
                     TagComplementos = etree.SubElement(TagDatosEmision,DTE_NS+"Complementos",{})
@@ -358,17 +320,15 @@ class AccountMove(models.Model):
                     TagNombreConsignatarioODestinatario = etree.SubElement(TagExportacion,cex+"NombreConsignatarioODestinatario",{})
                     TagNombreConsignatarioODestinatario.text = str(factura.partner_id.name)
                     TagDireccionConsignatarioODestinatario = etree.SubElement(TagExportacion,cex+"DireccionConsignatarioODestinatario",{})
-                    # TagDireccionConsignatarioODestinatario.text = str(factura.company_id.street or "")+" "+str(factura.company_id.street2 or "")
-                    TagDireccionConsignatarioODestinatario.text = str(factura.partner_id.street)
-
+                    TagDireccionConsignatarioODestinatario.text = str(factura.company_id.street or "")+" "+str(factura.company_id.street2 or "")
                     TagCodigoConsignatarioODestinatario = etree.SubElement(TagExportacion,cex+"CodigoConsignatarioODestinatario",{})
                     TagCodigoConsignatarioODestinatario.text = str(factura.company_id.zip or "")
                     TagNombreComprador = etree.SubElement(TagExportacion,cex+"NombreComprador",{})
                     TagNombreComprador.text = str(factura.partner_id.name)
                     TagDireccionComprador = etree.SubElement(TagExportacion,cex+"DireccionComprador",{})
-                    TagDireccionComprador.text = str(factura.partner_id.street)
+                    TagDireccionComprador.text = str(factura.company_id.street or "")+" "+str(factura.company_id.street2 or "")
                     TagCodigoComprador = etree.SubElement(TagExportacion,cex+"CodigoComprador",{})
-                    TagCodigoComprador.text = str(factura.partner_id.codigo_comprador) if factura.partner_id.codigo_comprador else "N/A"
+                    TagCodigoComprador.text = str(factura.company_id.zip) if factura.company_id.zip else "N/A"
                     TagOtraReferencia = etree.SubElement(TagExportacion,cex+"OtraReferencia",{})
                     TagOtraReferencia.text = "N/A"
                     TagINCOTERM = etree.SubElement(TagExportacion,cex+"INCOTERM",{})
@@ -381,7 +341,7 @@ class AccountMove(models.Model):
 
 
                 if tipo == 'NCRE':
-                    factura_original_id = self.env['account.move'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
+                    factura_original_id = self.env['account.invoice'].search([('number','=',factura.origin)])
                     if factura_original_id and factura.currency_id.id == factura_original_id.currency_id.id:
                         logging.warn('si')
                         TagComplementos = etree.SubElement(TagDatosEmision,DTE_NS+"Complementos",{})
@@ -390,28 +350,27 @@ class AccountMove(models.Model):
                         datos_complemento = {'IDComplemento': 'Notas', 'NombreComplemento':'Notas','URIComplemento':'text'}
                         TagComplemento = etree.SubElement(TagComplementos,DTE_NS+"Complemento",datos_complemento)
                         datos_referencias = {
-                            'FechaEmisionDocumentoOrigen': str(factura_original_id.invoice_date),
+                            'FechaEmisionDocumentoOrigen': str(factura_original_id.date_invoice),
                             'MotivoAjuste': 'Nota de credito factura',
-                            'NumeroAutorizacionDocumentoOrigen': str(factura_original_id.feel_numero_autorizacion),
+                            'NumeroAutorizacionDocumentoOrigen': str(factura_original_id.feel_uuid),
                             'NumeroDocumentoOrigen': str(factura_original_id.feel_numero),
                             'SerieDocumentoOrigen': str(factura_original_id.feel_serie),
                             'Version': '0.0'
                         }
                         TagReferenciasNota = etree.SubElement(TagComplemento,cno+"ReferenciasNota",datos_referencias,nsmap=NSMAP_REF)
 
-
-                # if factura.currency_id.id != factura.company_id.currency_id.id:
-                #     TagAdenda = etree.SubElement(TagSAT,DTE_NS+"Adenda",{})
-                #     if factura.comment:
-                #         TagComentario = etree.SubElement(TagAdenda, DTE_NS+"Comentario",{})
-                #         TagComentario.text = factura.comment
-                #     if factura.currency_id.id != factura.company_id.currency_id.id:
-                #         TagNitCliente = etree.SubElement(TagAdenda, DTE_NS+"NitCliente",{})
-                #         if factura.partner_id.vat:
-                #             if '-' in factura.partner_id.vat:
-                #                 TagNitCliente.text = factura.partner_id.vat.replace('-','')
-                #             else:
-                #                 TagNitCliente.text = factura.partner_id.vat
+                if factura.currency_id.id != factura.company_id.currency_id.id:
+                    TagAdenda = etree.SubElement(TagSAT,DTE_NS+"Adenda",{})
+                    if factura.comment:
+                        TagComentario = etree.SubElement(TagAdenda, DTE_NS+"Comentario",{})
+                        TagComentario.text = factura.comment
+                    if factura.currency_id.id != factura.company_id.currency_id.id:
+                        TagNitCliente = etree.SubElement(TagAdenda, DTE_NS+"NitCliente",{})
+                        if factura.partner_id.vat:
+                            if '-' in factura.partner_id.vat:
+                                TagNitCliente.text = factura.partner_id.vat.replace('-','')
+                            else:
+                                TagNitCliente.text = factura.partner_id.vat
 
                 # TagTotales.append(TagGranTotal)
 
@@ -423,13 +382,19 @@ class AccountMove(models.Model):
                 xmls = xmls.decode("utf-8").replace("&amp;", "&").encode("utf-8")
                 xmls_base64 = base64.b64encode(xmls)
                 logging.warn(xmls)
+            #
+            # FIN DE DOCUMENTO XML
 
             # GTDocumento = ET.Element("dte:GTDocumento", {'dpa': 'Prueba'}, Version="0.1", nsmap=NSMAP)
             # xmls = ET.tostring(GTDocumento, encoding="UTF-8")
             # xmls = xmls.decode("utf-8").replace("&amp;", "&").encode("utf-8")
             # xmls_base64 = base64.b64encode(xmls)
+            # logging.warn(xmls)
+            # for factura in self:
+            #
+            # FIRMA DE XML
 
-                url = "https://felgttestaws.digifact.com.gt/felapiv2/api/login/get_token"
+                url = "https://signer-emisores.feel.com.gt/sign_solicitud_firmas/firma_xml"
                 # nuevo_json = {
                 #     'llave': factura.journal_id.feel_llave_firma,
                 #     'codigo': factura.company_id.vat,
@@ -445,24 +410,13 @@ class AccountMove(models.Model):
                     nit_company = factura.company_id.vat
 
 
-                # nuevo_json = {
-                #     'llave': str(factura.journal_id.feel_llave_pre_firma),
-                #     'codigo': str(nit_company),
-                #     'alias': str(factura.journal_id.feel_usuario),
-                #     'es_anulacion': 'N',
-                #     'archivo': xmls_base64.decode("utf-8")
-                # }
-
-                # nuevo_json = {
-                #     'Username': 'GT.000044653948.GEDUCARTEST',
-                #     'Password': '1Vp._J6!',
-                #     'Body':xmls_base64.decode("utf-8"),
-                #
-                # }
-                nuevo_json = xmls_base64.decode("utf-8")
-
-                logging.warning('el json')
-                logging.warning(xmls)
+                nuevo_json = {
+                    'llave': str(factura.journal_id.feel_llave_pre_firma),
+                    'codigo': str(nit_company),
+                    'alias': str(factura.journal_id.feel_usuario),
+                    'es_anulacion': 'N',
+                    'archivo': xmls_base64.decode("utf-8")
+                }
                 # logging.warn(xmls)
                 # logging.warn(xmls_base64)
                 # nuevo_json = {
@@ -472,68 +426,70 @@ class AccountMove(models.Model):
                 #     'es_anulacion': 'N',
                 #     'archivo': xmls_base64.decode("utf-8")
                 # }
-                header = {"content-type": "application/json"}
-
-                logging.warn('RE')
-                # json_test = {"raw": }}
-                js = {
-                    "Username": str(factura.company_id.usuario_digifact),
-                    "Password":str(factura.company_id.pass_digifact)
-                    }
-
-                reponsea_api = requests.post("https://felgttestaws.digifact.com.gt/felapiv2/api/login/get_token",json= js,headers=header,verify=False )
-                if factura.company_id.fel_prueba == False:
-                    reponsea_api = requests.post("https://felgtaws.digifact.com.gt/gt.com.fel.api.v2/api/login/get_token",json= js,headers=header,verify=False )
-
-                logging.warn('el json request')
-                logging.warn(reponsea_api.json())
-                token = reponsea_api.json()['Token']
-                logging.warn('el token')
-                logging.warning(token)
-                header_response =	{
-        						"Content-Type": "application/xml",
-        						"Authorization": str(token)
-        					}
-                url3 = "https://felgttestaws.digifact.com.gt/felapiv2/api/FelRequest?NIT="+str(factura.company_id.nit_digifactfel)+"&TIPO=CERTIFICATE_DTE_XML_TOSIGN&FORMAT=PDF"
-                if factura.company_id.fel_prueba == False:
-                    logging.warn('no es prueba')
-                    url3 = "https://felgtaws.digifact.com.gt/gt.com.fel.api.v2/api/FELRequest?NIT="+str(factura.company_id.nit_digifactfel)+"&TIPO=CERTIFICATE_DTE_XML_TOSIGN&FORMAT=PDF"
-
-                response = requests.post(url3, data = xmls, headers = header_response,verify=False)
+                nuevos_headers = {"content-type": "application/json"}
+                response = requests.post(url, json = nuevo_json, headers = nuevos_headers)
                 # response_text = r.text()
-                response_json=response.json()
-                logging.warn('el response')
-                logging.warn(response_json)
+                respone_json=response.json()
+                logging.warn(respone_json)
 
-                if 'Codigo' in response_json:
-                    if response_json['Codigo'] == 1:
-                        factura.acuse_recibo_sat = response_json['AcuseReciboSAT']
-                        factura.codigo_sat = response_json['CodigosSAT']
-
-                        if response_json['ResponseDATA1']:
-                            factura.formato_xml = response_json['ResponseDATA1']
-                        if response_json['ResponseDATA2']:
-                            factura.formato_html = response_json['ResponseDATA2']
-                        if response_json['ResponseDATA3']:
-                            factura.formato_pdf = response_json['ResponseDATA3']
-                        if response_json['Autorizacion']:
-                            factura.feel_numero_autorizacion = response_json['Autorizacion']
-                        if response_json['Serie']:
-                            factura.feel_serie = response_json['Serie']
-                        if response_json['NUMERO']:
-                            factura.feel_numero = response_json['NUMERO']
-                        if response_json['BACKPROCESOR']:
-                            factura.back_procesor = response_json['BACKPROCESOR']
-                    else:
-                        raise UserError(str( response_json['Mensaje']  ))
+                if respone_json['resultado']:
+                        headers = {
+                            "USUARIO": str(factura.journal_id.feel_usuario),
+                            "LLAVE": str(factura.journal_id.feel_llave_firma),
+                            "IDENTIFICADOR": str(factura.journal_id.name)+'/'+str(factura.id),
+                            "Content-Type": "application/json",
+                        }
+                        # headers = {
+                        #     "USUARIO": 'TRANSAC_DIGI',
+                        #     "LLAVE": '2E6CF6C2F2826E3180702FE139F5B42A',
+                        #     "IDENTIFICADOR": str(factura.journal_id.name)+str(factura.id),
+                        #     "Content-Type": "application/json",
+                        # }
+                        nit_company = "CF"
+                        if '-' in factura.company_id.vat:
+                            nit_company = factura.company_id.vat.replace('-','')
+                        else:
+                            nit_company = factura.company_id.vat
+                        data = {
+                            "nit_emisor": str(nit_company),
+                            "correo_copia": str(factura.company_id.email),
+                            "xml_dte": respone_json["archivo"]
+                        }
+                        # data = {
+                        #     "nit_emisor": '103480307',
+                        #     "correo_copia": 'sispavgt@gmail.com',
+                        #     "xml_dte": respone_json["archivo"]
+                        # }
+                        #
+                        # WEB SERVICES PARA CERTIFICAR DTE - FEL
+                        #
+                        r = requests.post("https://certificador.feel.com.gt/fel/certificacion/v2/dte/", json=data, headers=headers)
+                        # logging.warn(r.json())
+                        retorno_certificacion_json = r.json()
+                        logging.warn(retorno_certificacion_json)
+                        #
+                        # GUARDO LOS DATOS EN ODOO
+                        #
+                        if retorno_certificacion_json['resultado']:
+                            # logging.warn('UUID')
+                            # logging.warn(retorno_certificacion_json["uuid"])
+                            factura.feel_uuid = retorno_certificacion_json["uuid"]
+                            factura.name = str(retorno_certificacion_json["serie"])+"/"+str(retorno_certificacion_json["numero"])
+                            factura.feel_serie = retorno_certificacion_json["serie"]
+                            factura.feel_numero = retorno_certificacion_json["numero"]
+                            factura.feel_documento_certificado = "https://report.feel.com.gt/ingfacereport/ingfacereport_documento?uuid="+retorno_certificacion_json["uuid"]
+                        else:
+                            raise UserError(str('ERROR AL VALIDAR FEEL'))
                 else:
-                    raise UserError(str( response_json['Mensaje']  ))
+                    raise UserError(str('ERROR AL VALIDAR FEEL'))
 
-        return super(AccountMove, self)._post(soft)
+        return super(AccountInvoice, self).invoice_validate()
 
-    def button_draft(self):
+
+   # @api.multi
+    def action_cancel(self):
         for factura in self:
-            if factura.journal_id.feel_tipo_dte and factura.journal_id.feel_codigo_establecimiento:
+            if factura.feel_serie and factura.feel_numero and factura.feel_uuid and factura.journal_id.feel_llave_firma:
                 attr_qname = etree.QName("http://www.w3.org/2001/XMLSchema-instance", "schemaLocation")
                 DTE_NS = "{http://www.sat.gob.gt/dte/fel/0.1.0}"
                 # Nuevo SMAP
@@ -549,7 +505,7 @@ class AccountMove(models.Model):
                 # dato_anulacion = {'ID': 'DatosCertificados'}
                 dato_anulacion = {"ID": "DatosCertificados"}
                 TagAnulacionDTE = etree.SubElement(TagSAT,DTE_NS+"AnulacionDTE",dato_anulacion)
-                fecha_factura = self.fecha_hora_factura(factura.invoice_date)
+                fecha_factura = self.fecha_hora_factura(factura.date_invoice)
                 fecha_anulacion = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%Y-%m-%d")
                 hora_anulacion = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%H:%M:%S")
                 fecha_anulacion = str(fecha_anulacion)+'T'+str(hora_anulacion)
@@ -569,7 +525,7 @@ class AccountMove(models.Model):
 
                 datos_generales = {
                     "ID": "DatosAnulacion",
-                    "NumeroDocumentoAAnular": str(factura.feel_numero_autorizacion),
+                    "NumeroDocumentoAAnular": str(factura.feel_uuid),
                     "NITEmisor": str(nit_company),
                     "IDReceptor": str(nit_partner),
                     "FechaEmisionDocumentoAnular": fecha_factura,
@@ -597,22 +553,8 @@ class AccountMove(models.Model):
                 logging.warn('BASE 64')
                 logging.warn(xmls_base64.decode("utf-8"))
 
-                header = {"content-type": "application/json"}
 
-                logging.warn('RE')
-                # json_test = {"raw": }}
-                js = {
-                    "Username": str(factura.company_id.usuario_digifact),
-                    "Password":str(factura.company_id.pass_digifact)
-                    }
-                reponsea_api = requests.post("https://felgttestaws.digifact.com.gt/felapiv2/api/login/get_token",json= js,headers=header,verify=False )
-                if factura.company_id.fel_prueba == False:
-                    reponsea_api = requests.post("https://felgtaws.digifact.com.gt/gt.com.fel.api.v2/api/login/get_token",json= js,headers=header,verify=False )
-                token = reponsea_api.json()['Token']
-
-                url = "https://felgttestaws.digifact.com.gt/felapiv2/api/FelRequest?NIT=" + str(factura.company_id.nit_digifactfel)+"&TIPO=ANULAR_FEL_TOSIGN&FORMAT=XML"
-                if factura.company_id.fel_prueba == False:
-                    url = "https://felgtaws.digifact.com.gt/gt.com.fel.api.v2/api/FELRequest?NIT=" + str(factura.company_id.nit_digifactfel)+"&TIPO=ANULAR_FEL_TOSIGN&FORMAT=XML"
+                url = "https://signer-emisores.feel.com.gt/sign_solicitud_firmas/firma_xml"
                 # nuevo_json = {
                 #     'llave': str(factura.journal_id.feel_llave_pre_firma),
                 #     'codigo': str(factura.company_id.vat),
@@ -621,53 +563,22 @@ class AccountMove(models.Model):
                 #     'archivo': xmls_base64.decode("utf-8")
                 # }
 
-                # nuevo_json = {
-                #     "llave": "cb835d9a7f9c57320b0b4f7290a147b3",
-                #     "archivo": xmls_base64.decode("utf-8"),
-                #     "codigo": "103480307",
-                #     "alias": "TRANSAC_DIGI",
-                #     "es_anulacion": "S"
-                # }
-                # logging.warn('NUEVO JSON ARCHIVO')
-                # logging.warn(xmls_base64.decode("utf-8"))
+                nuevo_json = {
+                    "llave": "cb835d9a7f9c57320b0b4f7290a147b3",
+                    "archivo": xmls_base64.decode("utf-8"),
+                    "codigo": "103480307",
+                    "alias": "TRANSAC_DIGI",
+                    "es_anulacion": "S"
+                }
+                logging.warn('NUEVO JSON ARCHIVO')
+                logging.warn(xmls_base64.decode("utf-8"))
 
-                header_response =	{
-        						"Content-Type": "application/xml",
-        						"Authorization": str(token)
-        					}
-
-
-                url3 = "https://felgttestaws.digifact.com.gt/felapiv2/api/FelRequest?NIT="+str(factura.company_id.nit_digifactfel)+"&TIPO=ANULAR_FEL_TOSIGN&FORMAT=PDF"
-                if factura.company_id.fel_prueba == False:
-                    url3 = "https://felgtaws.digifact.com.gt/gt.com.fel.api.v2/api/FELRequest?NIT="+str(factura.company_id.nit_digifactfel)+"&TIPO=ANULAR_FEL_TOSIGN&FORMAT=PDF"
-
-                response = requests.post(url3, data = xmls, headers = header_response,verify=False)
-                # response_text = r.text()
-                logging.warning('ANULAR')
-                response_json=response.json()
-                logging.warning(response_json)
-                # nuevos_headers = {"content-type": "application/json"}
-                # response = requests.post(url, json = nuevo_json, headers = nuevos_headers)
-                # respone_json=response.json()
-                # logging.warn('RESPONSE JSON')
-                # logging.warn(respone_json)
-                if response_json['Codigo'] == 1:
-                    if response_json['AcuseReciboSAT']:
-                        factura.acuse_recibo_sat = response_json['AcuseReciboSAT']
-                    if response_json['ResponseDATA1']:
-                        factura.formato_xml = response_json['ResponseDATA1']
-                    if response_json['ResponseDATA2']:
-                        factura.formato_html = response_json['ResponseDATA2']
-                    if response_json['ResponseDATA3']:
-                        factura.formato_pdf = response_json['ResponseDATA3']
-                    if response_json['Autorizacion']:
-                        factura.feel_numero_autorizacion = response_json['Autorizacion']
-                    if response_json['Serie']:
-                        factura.feel_serie = response_json['Serie']
-                    if response_json['NUMERO']:
-                        factura.feel_numero = response_json['NUMERO']
-                    if response_json['BACKPROCESOR']:
-                        factura.back_procesor = response_json['BACKPROCESOR']
+                nuevos_headers = {"content-type": "application/json"}
+                response = requests.post(url, json = nuevo_json, headers = nuevos_headers)
+                respone_json=response.json()
+                logging.warn('RESPONSE JSON')
+                logging.warn(respone_json)
+                if respone_json['resultado']:
                         # headers = {
                         #     "USUARIO": str(factura.journal_id.feel_usuario),
                         #     "LLAVE": str(factura.journal_id.feel_llave_firma),
@@ -681,18 +592,25 @@ class AccountMove(models.Model):
                         #     "xml_dte": respone_json["archivo"]
                         # }
 
-                    # headers = {
-                    #     "USUARIO": 'TRANSAC_DIGI',
-                    #     "LLAVE": '2E6CF6C2F2826E3180702FE139F5B42A',
-                    #     "IDENTIFICADOR": str(factura.journal_id.name)+'/'+str(factura.id)+'/'+'ANULACION',
-                    #     "Content-Type": "application/json",
-                    # }
-                    # data = {
-                    #     "nit_emisor": '103480307',
-                    #     "correo_copia": 'sispavgt@gmail.com',
-                    #     "xml_dte": respone_json["archivo"]
-                    # }
+                    headers = {
+                        "USUARIO": 'TRANSAC_DIGI',
+                        "LLAVE": '2E6CF6C2F2826E3180702FE139F5B42A',
+                        "IDENTIFICADOR": str(factura.journal_id.name)+'/'+str(factura.id)+'/'+'ANULACION',
+                        "Content-Type": "application/json",
+                    }
+                    data = {
+                        "nit_emisor": '103480307',
+                        "correo_copia": 'sispavgt@gmail.com',
+                        "xml_dte": respone_json["archivo"]
+                    }
+
+                    r = requests.post("https://certificador.feel.com.gt/fel/anulacion/v2/dte/", json=data, headers=headers)
+                    logging.warn(r.json())
+                    retorno_certificacion_json = r.json()
+                    logging.warn('si anuló')
+                    if not retorno_certificacion_json['resultado']:
+                        raise UserError(str('ERROR AL ANULAR'))
                 else:
                     raise UserError(str('ERROR AL ANULAR'))
 
-        return super(AccountMove, self).button_draft()
+        return super(AccountInvoice, self).action_cancel()

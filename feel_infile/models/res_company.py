@@ -14,12 +14,9 @@ from odoo import api, fields, models, _
 class ResCompany(models.Model):
     _inherit = "res.company"
 
-    nit_digifactfel = fields.Char('Nit DIGIFACTFEL')
     feel_frase = fields.Char('Tipo de frase Feel')
-    feel_frase_ids = fields.One2many('feel_digifact','company_id','Frases')
+    feel_frase_ids = fields.One2many('feel_infile','company_id','Frases')
     feel_codigo_exportador = fields.Char('Codigo exportador')
-    usuario_digifact = fields.Char('Usuario digifact')
-    pass_digifact = fields.Char('Contraseña digifact')
-    fel_prueba = fields.Boolean('Fel prueba')
-    feel_codigo_exportador = fields.Char('Codigo exportador')
+
+
     # feel_codigo_establecimiento = fields.Char('Codigo de establecimiento')
