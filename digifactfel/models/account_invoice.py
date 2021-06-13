@@ -73,16 +73,16 @@ class AccountMove(models.Model):
                 }
                 moneda = str(factura.currency_id.name)
                 logging.warn(moneda)
-                fecha = datetime.datetime.strptime(str(factura.invoice_date), '%Y-%m-%d').date().strftime('%Y-%m-%d')
+                fecha = datetime.datetime.strptime(str(factura.date_invoice), '%Y-%m-%d').date().strftime('%Y-%m-%d')
                 hora = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%H:%M:%S")
-                fecha_hora_emision = self.fecha_hora_factura(factura.invoice_date)
+                fecha_hora_emision = self.fecha_hora_factura(factura.date_invoice)
                 tipo = factura.journal_id.feel_tipo_dte
                 # if tipo == 'FACT':
                 #
                 # if tipo == 'NDEB':
                 #
                 if tipo == 'NCRE':
-                    factura_original_id = self.env['account.move'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
+                    factura_original_id = self.env['account.invoice'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
                     if factura_original_id and factura.currency_id.id == factura_original_id.currency_id.id:
                         tipo == 'NCRE'
                         logging.warn('si es nota credito')
@@ -246,9 +246,9 @@ class AccountMove(models.Model):
 
 
                     logging.warn('IMPUESTOS')
-                    currency = linea.move_id.currency_id
+                    currency = linea.invoice_id.currency_id
                     logging.warn(precio_unitario)
-                    taxes = tax_ids.compute_all(precio_unitario-descuento, currency, linea.quantity, linea.product_id, linea.move_id.partner_id)
+                    taxes = tax_ids.compute_all(precio_unitario-descuento, currency, linea.quantity, linea.product_id, linea.invoice_id.partner_id)
 
                     if len(linea.tax_ids) > 0:
                         # impuestos
@@ -381,7 +381,7 @@ class AccountMove(models.Model):
 
 
                 if tipo == 'NCRE':
-                    factura_original_id = self.env['account.move'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
+                    factura_original_id = self.env['account.invoice'].search([('feel_numero_autorizacion','=',factura.feel_numero_autorizacion),('id','!=',factura.id)])
                     if factura_original_id and factura.currency_id.id == factura_original_id.currency_id.id:
                         logging.warn('si')
                         TagComplementos = etree.SubElement(TagDatosEmision,DTE_NS+"Complementos",{})
@@ -390,7 +390,7 @@ class AccountMove(models.Model):
                         datos_complemento = {'IDComplemento': 'Notas', 'NombreComplemento':'Notas','URIComplemento':'text'}
                         TagComplemento = etree.SubElement(TagComplementos,DTE_NS+"Complemento",datos_complemento)
                         datos_referencias = {
-                            'FechaEmisionDocumentoOrigen': str(factura_original_id.invoice_date),
+                            'FechaEmisionDocumentoOrigen': str(factura_original_id.date_invoice),
                             'MotivoAjuste': 'Nota de credito factura',
                             'NumeroAutorizacionDocumentoOrigen': str(factura_original_id.feel_numero_autorizacion),
                             'NumeroDocumentoOrigen': str(factura_original_id.feel_numero),
@@ -549,7 +549,7 @@ class AccountMove(models.Model):
                 # dato_anulacion = {'ID': 'DatosCertificados'}
                 dato_anulacion = {"ID": "DatosCertificados"}
                 TagAnulacionDTE = etree.SubElement(TagSAT,DTE_NS+"AnulacionDTE",dato_anulacion)
-                fecha_factura = self.fecha_hora_factura(factura.invoice_date)
+                fecha_factura = self.fecha_hora_factura(factura.date_invoice)
                 fecha_anulacion = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%Y-%m-%d")
                 hora_anulacion = datetime.datetime.strftime(fields.Datetime.context_timestamp(self, datetime.datetime.now()), "%H:%M:%S")
                 fecha_anulacion = str(fecha_anulacion)+'T'+str(hora_anulacion)
