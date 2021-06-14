@@ -5,7 +5,7 @@ import logging
 
 class AccountMove(models.Model):
     _inherit = 'account.invoice'
-
+    
     if version_info[0] == 13:
         @api.onchange('journal_id')
         def onchange_tipo_factura(self):
@@ -20,9 +20,9 @@ class AccountMove(models.Model):
         @api.onchange('journal_id')
         def onchange_tipo_factura(self):
             tipo = False
-            if self.invoice_type in ['in_invoice','in_refund']:
+            if self.move_type in ['in_invoice','in_refund']:
                 tipo = 'compra'
-            if self.invoice_type in ['out_invoice','out_refund']:
+            if self.move_type in ['out_invoice','out_refund']:
                 tipo = 'venta'
             logging.warn(tipo)
             self.tipo_factura = tipo
