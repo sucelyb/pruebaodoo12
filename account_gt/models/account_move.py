@@ -32,7 +32,7 @@ class AccountMove(models.Model):
         string="Tipo de factura")
 
 class AccountMoveLine(models.Model):
-    _inherit = 'account.invoice.line'
+    _inherit = 'account.move.line'
 
     conciliacion_bancaria = fields.Boolean("Conciliacion bancaria")
     fecha_conciliacion_bancaria = fields.Date("Fecha conciliacion")
