@@ -6,10 +6,8 @@
             <field name="model">account.invoice</field>
             <field name="inherit_id" ref="account.invoice_form"/>
             <field name="arch" type="xml">
-                <field name="partner_bank_id" position="after">
-		
-                    <field name="feel_numero"/>
-			
+                <field name="partner_bank_id" position="after">		
+                    <field name="tipo_factura"/>
                 </field>
             </field>
         </record>
