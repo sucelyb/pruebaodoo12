@@ -2,8 +2,8 @@
 <odoo>
     <data>
 
-        <record id="digifact_view_move_form" model="ir.ui.view">
-			<field name="name">digifactfel.account.move.form</field>
+        <record model="ir.ui.view" id="digifact_view_move_form">
+          	<field name="name">digifactfel.account.invoice.form</field>
             <field name="model">account.invoice</field>
             <field name="inherit_id" ref="account.view_move_form"/>
             <field name="arch" type="xml">
@@ -34,5 +34,3 @@
 
     </data>
 </odoo>
-
-
