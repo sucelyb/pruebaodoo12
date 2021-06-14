@@ -6,7 +6,9 @@
             <field name="model">res.company</field>
 	        <field name="inherit_id" ref="base.view_company_form"/>
 	        <field name="arch" type="xml">
-                    <page name="general_info" position="after">
+              <data>
+                  <notebook position="inside">                   
+				   <page name="general_info" position="after">
                         <page string="FEEL">
                             <group string="Frases">
                                 <group>
@@ -26,6 +28,10 @@
 
                         </page>
                     </page>
+					
+				 </notebook>
+                </data>
+	
 	        </field>
 	    </record>
 
