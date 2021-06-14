@@ -12,7 +12,7 @@ class ConciliacionBancariaWizard(models.TransientModel):
     def conciliar_con_banco(self):
         for campo_wizard in self:
             if campo_wizard.fecha:
-                movimientos_seleccionados = self.env['account.move.line'].browse(self.env.context.get('active_ids', []))
+                movimientos_seleccionados = self.env['account.invoice.line'].browse(self.env.context.get('active_ids', []))
                 for movimiento in movimientos_seleccionados:
                     # existe_conciliacion = self.env['account_gt.conciliacion_bancaria'].search([('move_id','=',movimiento.id)])
                     if movimiento.conciliacion_bancaria and movimiento.fecha_conciliacion_bancaria:
@@ -26,7 +26,7 @@ class ConciliacionBancariaWizard(models.TransientModel):
 
     def desconciliar_con_banco(self):
         for campo_wizard in self:
-            movimientos_seleccionados = self.env['account.move.line'].browse(self.env.context.get('active_ids', []))
+            movimientos_seleccionados = self.env['account.invoice.line'].browse(self.env.context.get('active_ids', []))
             for move in movimientos_seleccionados:
                 # conciliacion = self.env['account_gt.conciliacion_bancaria'].search([('move_id','=',move.id)])
                 if move.fecha_conciliacion_bancaria and move.conciliacion_bancaria:
