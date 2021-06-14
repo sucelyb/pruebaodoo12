@@ -2,7 +2,7 @@
 <odoo>
     <data>
 
-        <record model="ir.ui.view" id="digifact_view_invoice_form">
+        <record model="ir.ui.view" id="digifact_view_move_form">
           	<field name="name">digifactfel.account.invoice.form</field>
             <field name="model">account.invoice</field>
             <field name="inherit_id" ref="account.view_invoice_form"/>
