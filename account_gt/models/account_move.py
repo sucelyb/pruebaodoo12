@@ -4,7 +4,7 @@ from odoo.release import version_info
 import logging
 
 class AccountMove(models.Model):
-    _inherit = 'account.invoice'
+    _inherit = "account.invoice"
     
     if version_info[0] == 13:
         @api.onchange('journal_id')
