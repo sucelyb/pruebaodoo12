@@ -18,6 +18,5 @@
 
     'data': [
         'views/account_move_views.xml',
-        'data/ir_sequence_data.xml',
     ],
 }

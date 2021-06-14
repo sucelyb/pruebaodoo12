@@ -27,7 +27,6 @@ class AccountMove(models.Model):
             logging.warn(tipo)
             self.tipo_factura = tipo  """
 
- """liquidacion_id = fields.Many2one('account_gt.liquidacion','Liquidacion')"""
     tipo_factura = fields.Selection([('venta','Venta'),('compra', 'Compra o Bien'), ('servicio', 'Servicio'),('varios','Varios'), ('combustible', 'Combustible'),('importacion', 'Importación'),('exportacion','Exportación')],
         string="Tipo de factura")
 
@@ -36,4 +35,6 @@ class AccountMoveLine(models.Model):
 
     conciliacion_bancaria = fields.Boolean("Conciliacion bancaria")
     fecha_conciliacion_bancaria = fields.Date("Fecha conciliacion")
+    
+    liquidacion_id
     
