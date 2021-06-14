@@ -8,8 +8,8 @@
             <field name="inherit_id" ref="account.view_move_form"/>
             <field name="arch" type="xml">
                 <page name="other_info" position="after">
-                    <page name="feel" string="FEEL">
-                        <group>
+                    <page name="feel" string="FEEL">         
+					    <group>
                             <group>
                                 <field name="feel_incoterm"/>
                                 <field name="acuse_recibo_sat"/>
