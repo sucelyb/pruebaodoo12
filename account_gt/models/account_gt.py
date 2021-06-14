@@ -19,7 +19,7 @@ class Liquidacion(models.Model):
     currency_id = fields.Many2one('res.currency','Moneda',default=lambda self: self.env.company.currency_id.id)
     diario_id = fields.Many2one('account.journal', 'Diario', required=True,tracking=True)
     cuenta_id = fields.Many2one('account.account', 'Cuenta de desajuste',tracking=True)
-    move_id = fields.Many2one('account.move', 'Movimiento',tracking=True)
+    move_id = fields.Many2one('account.invoice', 'Movimiento',tracking=True)
     state = fields.Selection([
         ('borrador', 'Borrador'),
         ('conciliado', 'Conciliado'),
@@ -117,7 +117,7 @@ class Liquidacion(models.Model):
                     'date_maturity': dato.fecha,
                 }))
 
-            move = self.env['account.move'].create({
+            move = self.env['account.invoice'].create({
                 'line_ids': nuevas_lineas,
                 'ref': dato.name,
                 'date': dato.fecha,
@@ -171,7 +171,7 @@ class LiquidacionFactura(models.Model):
     _rec_name = "liquidacion_id"
 
     liquidacion_id = fields.Many2one('account_gt.liquidacion','Liquidacion')
-    factura_id = fields.Many2one('account.move','Factura')
+    factura_id = fields.Many2one('account.invoice','Factura')
     currency_id = fields.Many2one('res.currency',string='moneda', related='factura_id.currency_id')
     total = fields.Monetary('Total',related='factura_id.amount_total')
 
