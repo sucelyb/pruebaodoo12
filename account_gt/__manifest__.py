@@ -17,7 +17,6 @@
     'depends': ['account','base'],
 
     'data': [
-        'views/report.xml',
         'views/res_partner_views.xml',
         'views/account_gt_views.xml',
         'views/account_move_views.xml',
