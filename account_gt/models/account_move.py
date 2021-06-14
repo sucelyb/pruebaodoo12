@@ -4,7 +4,7 @@ from odoo.release import version_info
 import logging
 
 class AccountMove(models.Model):
-    _inherit = 'account.move'
+    _inherit = 'account.invoice'
 
     if version_info[0] == 13:
         @api.onchange('journal_id')
@@ -32,7 +32,7 @@ class AccountMove(models.Model):
         string="Tipo de factura")
 
 class AccountMoveLine(models.Model):
-    _inherit = 'account.move.line'
+    _inherit = 'account.invoice.line'
 
     conciliacion_bancaria = fields.Boolean("Conciliacion bancaria")
     fecha_conciliacion_bancaria = fields.Date("Fecha conciliacion")
