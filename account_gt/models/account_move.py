@@ -36,3 +36,4 @@ class AccountMoveLine(models.Model):
 
     conciliacion_bancaria = fields.Boolean("Conciliacion bancaria")
     fecha_conciliacion_bancaria = fields.Date("Fecha conciliacion")
+    
