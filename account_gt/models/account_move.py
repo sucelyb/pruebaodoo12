@@ -16,7 +16,7 @@ class AccountMove(models.Model):
                 tipo = 'venta'
             logging.warn(tipo)
             self.tipo_factura = tipo
-    else:
+ """    else:
         @api.onchange('journal_id')
         def onchange_tipo_factura(self):
             tipo = False
@@ -25,7 +25,7 @@ class AccountMove(models.Model):
             if self.move_type in ['out_invoice','out_refund']:
                 tipo = 'venta'
             logging.warn(tipo)
-            self.tipo_factura = tipo
+            self.tipo_factura = tipo  """
 
     liquidacion_id = fields.Many2one('account_gt.liquidacion','Liquidacion')
     tipo_factura = fields.Selection([('venta','Venta'),('compra', 'Compra o Bien'), ('servicio', 'Servicio'),('varios','Varios'), ('combustible', 'Combustible'),('importacion', 'Importación'),('exportacion','Exportación')],
