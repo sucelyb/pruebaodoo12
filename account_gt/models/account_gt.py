@@ -68,7 +68,7 @@ class Liquidacion(models.Model):
                 for linea in dato.pago_ids:
                     # logging.warn(c.name)
                     # logging.warn(c.amount)
-                    for l in linea.pago_id.move_line_ids:
+                    for l in linea.pago_id.invoice_line_ids:
                         if l.account_id.reconcile:
                             if not l.reconciled :
                                 total -= l.debit - l.credit
@@ -126,7 +126,7 @@ class Liquidacion(models.Model):
             #
             indice = 0
             for linea in lineas:
-                lineas_conciliar = linea | move.line_ids[indice]
+                lineas_conciliar = linea | invoice_line_ids[indice]
                 lineas_conciliar.reconcile()
                 indice += 1
 

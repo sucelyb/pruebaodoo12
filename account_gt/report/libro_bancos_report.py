@@ -9,7 +9,7 @@ class LibroBancos(models.AbstractModel):
 
 
     def saldo_inicial(self, datos):
-        account_move_line_ids = self.env['account.move.line'].search([('account_id','=',datos['cuenta_id'][0]), ('date','<',datos['fecha_inicio'])], order='date')
+        account_invoice_line_ids = self.env['account.invoice.line'].search([('account_id','=',datos['cuenta_id'][0]), ('date','<',datos['fecha_inicio'])], order='date')
         saldo = 0
         if account_move_line_ids:
             for movimiento in account_move_line_ids:
@@ -19,7 +19,7 @@ class LibroBancos(models.AbstractModel):
 
     def movimientos(self, datos):
         moves = []
-        account_move_line_ids = self.env['account.move.line'].search([('account_id','=',datos['cuenta_id'][0]), ('date','>=',datos['fecha_inicio']), ('date','<=',datos['fecha_fin'])], order='date')
+        account_invoice_line_ids = self.env['account.invoice.line'].search([('account_id','=',datos['cuenta_id'][0]), ('date','>=',datos['fecha_inicio']), ('date','<=',datos['fecha_fin'])], order='date')
         for movimiento in account_move_line_ids:
 
             mov = {
