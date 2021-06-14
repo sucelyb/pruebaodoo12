@@ -17,10 +17,7 @@
     'depends': ['account','base'],
 
     'data': [
-        'views/res_partner_views.xml',
-        'views/account_gt_views.xml',
         'views/account_move_views.xml',
-        'views/account_payment_view.xml',
         'data/ir_sequence_data.xml',
     ],
 }

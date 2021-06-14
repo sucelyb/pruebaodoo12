@@ -8,7 +8,7 @@
             <field name="inherit_id" ref="account.invoice_form"/>
             <field name="arch" type="xml">
                 <field name="fiscal_position_id" position="after">
-                    <field name="liquidacion_id"/>
+             
                     <field name="tipo_factura"/>
                 </field>
             </field>
